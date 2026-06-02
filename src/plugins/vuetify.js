@@ -6,21 +6,23 @@ Vue.use(Vuetify);
 
 export default new Vuetify({
   theme: {
-    dark: true
-    //   options: {
-    //     customProperties: true,
-    //   },
-    // themes: {      
-    //   light: {
-    //     primary: '#ee44aa',
-    //     secondary: '#424242',
-    //     accent: '#82B1FF',
-    //     error: '#FF5252',
-    //     info: '#2196F3',
-    //     success: '#4CAF50',
-    //     warning: '#FFC107'
-    //   },
-    // },
+    // Carga la preferencia guardada por el usuario (default: modo claro)
+    dark: localStorage.getItem('dark') === 'true',
+    options: {
+      customProperties: true,
+    },
+    themes: {
+      light: {
+        primary: '#224688',
+        secondary: '#FF6A13',
+        accent: '#26c6da',
+      },
+      dark: {
+        primary: '#5C8AE6',
+        secondary: '#FF6A13',
+        accent: '#26c6da',
+      },
+    },
   },
   lang: {
     locales: { es },

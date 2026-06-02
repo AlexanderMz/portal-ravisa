@@ -540,9 +540,8 @@ const Notas = {
 const Referencia = {
   namespaced: true,
   state: () => ({
-    urldownload: '/api/Referencia/dowload',
-  }),
-  actions: {
+    urldownload: 'http://172.20.20.11:8081/api/Referencia/descargar-reporte-global', 
+  }),  actions: {
     getReferencias: ({ commit }, fecha) => {
       return new Promise((resolve, reject) => {
         try {

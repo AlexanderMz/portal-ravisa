@@ -1,20 +1,28 @@
 <template>
   <v-container>
-    <v-toolbar dense>
-      <v-toolbar-title>Informe Referencias</v-toolbar-title>
-      <v-spacer> </v-spacer>
-      <export-excel
-        class="v-btn v-btn--depressed theme--dark v-size--default primary"
-        :data="registros"
-        worksheet="Datos"
-        :name="`${date}-summary.xls`"
-        v-if="registros.length"
-      >
-        <v-icon>
-          cloud_download
-        </v-icon>
-      </export-excel>
-    </v-toolbar>
+      <v-toolbar dense>
+          <v-toolbar-title>Informe Referencias</v-toolbar-title>
+          <v-spacer> </v-spacer>
+
+          <v-btn color="success"
+                 outlined
+                 href="/Formato_Cancelaciones.xlsx"
+                 download="Formato_Cancelaciones.xlsx"
+                 class="mr-4">
+              <v-icon left>mdi-file-excel</v-icon>
+              Descargar Plantilla
+          </v-btn>
+
+          <export-excel class="v-btn v-btn--depressed theme--dark v-size--default primary"
+                        :data="registros"
+                        worksheet="Datos"
+                        :name="`${date}-summary.xls`"
+                        v-if="registros.length">
+              <v-icon>
+                  cloud_download
+              </v-icon>
+          </export-excel>
+      </v-toolbar>
     <v-row dense>
       <v-col
         cols="6"
@@ -211,7 +219,7 @@ export default {
       estados: [
         {text: 'Abierto', value: 'Abierto'},
         {text: 'Cerrado', value: 'Cerrado'},
-        {text: 'Revision', value: 'Revision'},
+        {text: 'Diferido', value: 'Diferido'},
       ],
       user: localStorage.getItem("user")
     }),

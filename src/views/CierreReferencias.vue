@@ -89,7 +89,7 @@ export default {
       estados: [
         {text: 'Abierto', value: 'Abierto'},
         {text: 'Cerrado', value: 'Cerrado'},
-        {text: 'Revision', value: 'Revision'},
+        {text: 'Diferido', value: 'Diferido'},
       ],
       user: localStorage.getItem("user")
     }),

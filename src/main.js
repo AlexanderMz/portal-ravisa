@@ -5,11 +5,12 @@ import store from './store'
 import vuetify from './plugins/vuetify';
 import excel from 'vue-excel-export'
 import axios from 'axios'
+const host = window.location.hostname;
 
 let url = ''
-//url = 'http://localhost:8088'
+url = `http://${host}:8081`
 //url = 'https://localhost:5001'
-url = 'https://localhost:44393'
+//url = 'https://localhost:44393'
 
 Vue.use(excel)
 Vue.config.productionTip = false
