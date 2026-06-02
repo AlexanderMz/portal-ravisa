@@ -218,8 +218,24 @@
             </v-select>
           </v-col>
         </v-row>
-        <v-row dense class="mt-1">
-          <v-col cols="12" class="d-flex justify-end">
+        <v-row dense class="mt-1" align="center">
+          <v-col cols="12" sm="6" class="d-flex align-center">
+            <v-switch
+              v-model="soloConSaldo"
+              label="Solo con saldo"
+              inset
+              dense
+              hide-details
+              class="mt-0 pt-0"
+            ></v-switch>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon small class="ml-2 grey--text" v-bind="attrs" v-on="on">help_outline</v-icon>
+              </template>
+              <span>Muestra solo referencias con saldo de anticipos &gt; 0 (omite las que están en 0)</span>
+            </v-tooltip>
+          </v-col>
+          <v-col cols="12" sm="6" class="d-flex justify-end">
             <v-btn
               color="primary"
               rounded
@@ -274,6 +290,9 @@
           <template v-slot:[`item.notadeCreditoAnticipo`]="{ item }">
             <span :class="{ 'red--text': item.notadeCreditoAnticipo < 0 }"> {{ item.notadeCreditoAnticipo | currency }} </span>
           </template>
+          <template v-slot:[`item.saldo`]="{ item }">
+            <span :class="{ 'red--text': item.saldo < 0 }"> {{ item.saldo | currency }} </span>
+          </template>
           <template v-slot:[`item.balanceGC`]="{ item }">
             <span :class="{ 'red--text': item.balanceGC < 0 }"> {{ item.balanceGC | currency }} </span>
           </template>
@@ -294,6 +313,9 @@
                 </template>
                 <template v-slot:[`item.pedido`]="{ item }">
                   <span> {{ item.pedido | currency }} </span>
+                </template>
+                <template v-slot:[`item.saldo`]="{ item }">
+                  <span> {{ item.saldo | currency }} </span>
                 </template>
                 <template v-slot:[`item.ingreso`]="{ item }">
                   <span> {{ item.ingreso | currency }} </span>
@@ -360,6 +382,7 @@ export default {
       dateIni: new Date().toISOString().substr(0, 10),
       dateFin: new Date().toISOString().substr(0, 10),
       estado: [],
+      soloConSaldo: false,
       page: 1,
       perPage: 30,
       selected: [],
@@ -406,6 +429,7 @@ export default {
         {text: 'Ingreso GCC', value: 'ingresoGCC', align: 'end' },
         {text: 'Egreso', value: 'egreso', align: 'end' },
         {text: 'NC Anticipos', value: 'notadeCreditoAnticipo', align: 'end' },
+        {text: 'Saldo', value: 'saldo', align: 'end' },
         {text: 'Balance GC', value: 'balanceGC', align: 'end' },
         {text: 'Balance General', value: 'balanceGeneral', align: 'end' },
         {text: 'Impuesto', value: 'impuesto', align: 'end' },
@@ -428,6 +452,7 @@ export default {
         {text:'Moneda', value: 'moneda'},
         {text:'Pedido', value: 'pedido'},
         {text:'Anticipo cliente', value: 'anticipoCliente'},
+        {text:'Saldo', value: 'saldo'},
         {text:'Ingreso', value: 'ingreso'},
         {text:'Egreso', value: 'egreso'},
         {text:'Pedimento', value: 'pedimento'},
@@ -493,9 +518,15 @@ export default {
       return this.orderedColumns.filter(c => c.text.toLowerCase().includes(q))
     },
     registrosFiltrados() {
-      if (!this.estado || this.estado.length === 0) return this.registros
-      const set = this.estado.map(e => e.toString().toLowerCase())
-      return this.registros.filter(r => set.includes((r.estatus || '').toString().toLowerCase()))
+      let data = this.registros
+      if (this.estado && this.estado.length) {
+        const set = this.estado.map(e => e.toString().toLowerCase())
+        data = data.filter(r => set.includes((r.estatus || '').toString().toLowerCase()))
+      }
+      if (this.soloConSaldo) {
+        data = data.filter(r => Number(r.saldo) > 0)
+      }
+      return data
     },
     exportFields() {
       const fields = {}
@@ -524,8 +555,17 @@ export default {
       if (saved && Array.isArray(saved.order)) {
         // Formato nuevo: { order: [...], visible: [...] }
         const order = saved.order.filter(v => known.includes(v))
-        // agrega al final cualquier columna nueva que no estuviera guardada
-        known.forEach(v => { if (!order.includes(v)) order.push(v) })
+        // inserta columnas nuevas en su posición por defecto (junto a sus vecinas),
+        // no al final, para respetar el orden previsto del catálogo
+        known.forEach((v, i) => {
+          if (order.includes(v)) return
+          let inserted = false
+          for (let j = i + 1; j < known.length; j++) {
+            const idx = order.indexOf(known[j])
+            if (idx !== -1) { order.splice(idx, 0, v); inserted = true; break }
+          }
+          if (!inserted) order.push(v)
+        })
         this.columnOrder = order
         this.selectedColumns = Array.isArray(saved.visible)
           ? saved.visible.filter(v => known.includes(v))
