@@ -17,6 +17,11 @@
 
         <v-spacer></v-spacer>
 
+        <v-btn color="blue-grey" outlined small rounded class="mr-3 text-none" @click="resetFiltros">
+          <v-icon left small>clear</v-icon>
+          Limpiar filtros
+        </v-btn>
+
         <!-- Selector de columnas (persistente por usuario) -->
         <v-menu :close-on-content-click="false" offset-y left max-height="500">
           <template v-slot:activator="{ on, attrs }">
@@ -219,7 +224,7 @@
           </v-col>
         </v-row>
         <v-row dense class="mt-1" align="center">
-          <v-col cols="12" sm="6" class="d-flex align-center">
+          <v-col cols="12" sm="4" md="3" class="d-flex align-center">
             <v-switch
               v-model="soloConSaldo"
               label="Solo con saldo"
@@ -235,7 +240,28 @@
               <span>Muestra solo referencias con saldo de anticipos &gt; 0 (omite las que están en 0)</span>
             </v-tooltip>
           </v-col>
-          <v-col cols="12" sm="6" class="d-flex justify-end">
+          <v-col cols="12" sm="5" md="5" class="d-flex align-center">
+            <v-text-field
+              v-model.number="ocultarBalanceHasta"
+              type="number"
+              min="0"
+              prefix="−"
+              label="Ocultar Balance GC negativo hasta"
+              prepend-inner-icon="visibility_off"
+              outlined
+              dense
+              rounded
+              hide-details
+              clearable
+            ></v-text-field>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon small class="ml-2 grey--text" v-bind="attrs" v-on="on">help_outline</v-icon>
+              </template>
+              <span>Oculta referencias con Balance GC entre −(este monto) y 0. Vacío = no oculta nada. No muestra por debajo del piso del servidor (−10).</span>
+            </v-tooltip>
+          </v-col>
+          <v-col cols="12" sm="3" md="4" class="d-flex justify-end">
             <v-btn
               color="primary"
               rounded
@@ -383,6 +409,7 @@ export default {
       dateFin: new Date().toISOString().substr(0, 10),
       estado: [],
       soloConSaldo: false,
+      ocultarBalanceHasta: null,
       page: 1,
       perPage: 30,
       selected: [],
@@ -435,6 +462,7 @@ export default {
         {text: 'Impuesto', value: 'impuesto', align: 'end' },
         {text: 'Patente', value: 'patente', align: 'center' },
         {text: 'Aduana', value: 'aduana', align: 'center' },
+        {text: 'Folio Factura Proveedor', value: 'folioFacturaProveedor', align: 'center' },
         {text: 'Folio CHL', value: 'folioChL', align: 'center' },
         {text: 'Estado CHL', value: 'estatusChL', align: 'center' },
         {text: 'CHL Compo', value: 'chLComp' },
@@ -445,6 +473,7 @@ export default {
         {text:'Tipo Documento', value: 'tipoDocumento'},
         {text:'Sucursal', value: 'sucursal'},
         {text:'Folio', value: 'folio'},
+        {text:'Folio Fact. Prov.', value: 'folioFacturaProveedor'},
         {text:'Fecha', value: 'fecha'},
         {text:'Fecha Pago', value: 'fechaPago'},
         {text:'Codigo Cliente', value: 'codigoCliente'},
@@ -526,6 +555,14 @@ export default {
       if (this.soloConSaldo) {
         data = data.filter(r => Number(r.saldo) > 0)
       }
+      const umbral = Number(this.ocultarBalanceHasta) || 0
+      if (umbral > 0) {
+        // oculta Balance GC negativos chicos: entre -umbral y 0 (no toca positivos ni cero)
+        data = data.filter(r => {
+          const b = Number(r.balanceGC)
+          return !(b < 0 && b > -umbral)
+        })
+      }
       return data
     },
     exportFields() {
@@ -536,6 +573,13 @@ export default {
   },
   methods: {
     ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto']),
+    resetFiltros() {
+      // Limpia solo los filtros (no toca fechas ni columnas). Instantáneo.
+      this.estado = []
+      this.soloConSaldo = false
+      this.ocultarBalanceHasta = null
+      this.search2 = ''
+    },
     estadoColor(estatus) {
       switch ((estatus || '').toString().toLowerCase()) {
         case 'abierto': return 'green darken-1'
