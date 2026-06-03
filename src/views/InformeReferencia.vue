@@ -245,7 +245,7 @@
               v-model.number="ocultarBalanceHasta"
               type="number"
               min="0"
-              prefix="−"
+              prefix="$-"
               label="Ocultar Balance GC negativo hasta"
               prepend-inner-icon="visibility_off"
               outlined
@@ -434,6 +434,7 @@ export default {
         { text: 'Abierto', value: 'Abierto' },
         { text: 'Cerrado', value: 'Cerrado' },
         { text: 'Diferido', value: 'Diferido' },
+        { text: 'Reabierto', value: 'Reabierto' },
       ],
       dateFields: ['fecha Cruze', 'fecha Pago Pedimento', 'fechaCreacionChL', 'fechaFacturacion'],
       allColumns: [
@@ -585,6 +586,7 @@ export default {
         case 'abierto': return 'green darken-1'
         case 'cerrado': return 'blue-grey darken-1'
         case 'diferido': return 'orange darken-2'
+        case 'reabierto': return 'purple darken-1'
         default: return 'grey'
       }
     },
