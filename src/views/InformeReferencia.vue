@@ -313,6 +313,12 @@
           <template v-slot:[`item.egreso`]="{ item }">
             <span :class="{ 'red--text': item.egreso < 0 }"> {{ item.egreso | currency }} </span>
           </template>
+          <template v-slot:[`item.anticipoProveedor`]="{ item }">
+            <span> {{ item.anticipoProveedor | currency }} </span>
+          </template>
+          <template v-slot:[`item.costoVentas`]="{ item }">
+            <span> {{ item.costoVentas | currency }} </span>
+          </template>
           <template v-slot:[`item.notadeCreditoAnticipo`]="{ item }">
             <span :class="{ 'red--text': item.notadeCreditoAnticipo < 0 }"> {{ item.notadeCreditoAnticipo | currency }} </span>
           </template>
@@ -405,7 +411,7 @@ export default {
       search2: '',
       referencia: '',
       date: new Date().toISOString().substr(0, 10),
-      dateIni: new Date().toISOString().substr(0, 10),
+      dateIni: '2025-01-01',
       dateFin: new Date().toISOString().substr(0, 10),
       estado: [],
       soloConSaldo: false,
@@ -456,6 +462,8 @@ export default {
         {text: 'Ingreso GCR', value: 'ingresoGCR', align: 'end' },
         {text: 'Ingreso GCC', value: 'ingresoGCC', align: 'end' },
         {text: 'Egreso', value: 'egreso', align: 'end' },
+        {text: 'Anticipo Prov.', value: 'anticipoProveedor', align: 'end' },
+        {text: 'Costo de ventas', value: 'costoVentas', align: 'end' },
         {text: 'NC Anticipos', value: 'notadeCreditoAnticipo', align: 'end' },
         {text: 'Saldo', value: 'saldo', align: 'end' },
         {text: 'Balance GC', value: 'balanceGC', align: 'end' },
