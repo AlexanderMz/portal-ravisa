@@ -14,8 +14,21 @@
           <v-icon left x-small>list</v-icon>
           {{ registrosTabla.length }} / {{ registros.length }}
         </v-chip>
+        <v-chip class="mr-2" small label outlined color="green darken-2" v-if="cacheStamp" title="Última actualización de la caché">
+          <v-icon left x-small>schedule</v-icon>
+          Datos: {{ cacheStamp }}
+        </v-chip>
+        <v-chip class="mr-2" small label color="amber darken-3" dark v-if="cargandoCompleto">
+          <v-progress-circular indeterminate size="12" width="2" class="mr-1"></v-progress-circular>
+          Cargando histórico…
+        </v-chip>
 
         <v-spacer></v-spacer>
+
+        <v-btn color="green darken-1" outlined small rounded class="mr-3 text-none" :loading="refrescando" @click="actualizarCache" title="Recalcula la caché desde SAP ahora (tarda ~3 min)">
+          <v-icon left small>sync</v-icon>
+          Actualizar ahora
+        </v-btn>
 
         <v-btn color="blue-grey" outlined small rounded class="mr-3 text-none" @click="resetFiltros">
           <v-icon left small>clear</v-icon>
@@ -416,6 +429,9 @@ export default {
       search2Input: '',
       searchTimer: null,
       buscando: false,
+      cargandoCompleto: false,
+      refrescando: false,
+      cacheStamp: '',
       referencia: '',
       date: new Date().toISOString().substr(0, 10),
       dateIni: '2025-01-01',
@@ -600,7 +616,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto']),
+    ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto', 'getReferenciasFast', 'getCacheInfo', 'refreshCache']),
     aplicarBusqueda() {
       // Solo busca al presionar el botón o Enter (no en cada tecla) para no trabar la tabla.
       if (this.buscando) return
@@ -781,14 +797,50 @@ export default {
         .finally(() => this.loading = false)
     },
     cargarDatos() {
+      const FechaIni = this.dateIni.replaceAll("-", "")
+      const FechaFin = this.dateFin.replaceAll("-", "")
       this.overlay = true
-      this.getReferencias({ FechaFin: this.dateFin.replaceAll("-", ""), FechaIni: this.dateIni.replaceAll("-", "") })
+      this.cargandoCompleto = false
+      // FASE 1: trae las ~2000 referencias mas recientes (rapido, ~1s) para ver datos de inmediato
+      this.getReferenciasFast({ FechaIni, FechaFin, top: 2000 })
         .then((res) => {
           this.registros = this.formatearFechas(res.data, this.dateFields)
           this.overlay = false
+          // FASE 2: completa el historico en segundo plano y reemplaza
+          this.cargandoCompleto = true
+          this.getReferenciasFast({ FechaIni, FechaFin })
+            .then((res2) => { this.registros = this.formatearFechas(res2.data, this.dateFields) })
+            .catch(() => {})
+            .finally(() => { this.cargandoCompleto = false })
         })
-        .catch(() => this.overlay = false)
-        .finally(() => this.overlay = false)
+        .catch(() => { this.overlay = false; this.cargandoCompleto = false })
+      this.cargarCacheInfo()
+    },
+    cargarCacheInfo() {
+      this.getCacheInfo()
+        .then((res) => {
+          const m = (res && res.data && res.data[0]) ? res.data[0] : null
+          this.cacheStamp = (m && m.builtAt) ? this.formatStamp(m.builtAt) : ''
+        })
+        .catch(() => {})
+    },
+    formatStamp(v) {
+      if (!v) return ''
+      const d = new Date(v)
+      if (isNaN(d.getTime())) return String(v).replace('T', ' ').substring(0, 16)
+      const p = n => (n < 10 ? '0' + n : '' + n)
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+    },
+    actualizarCache() {
+      this.refrescando = true
+      this.refreshCache()
+        .then((res) => {
+          const m = (res && res.data && res.data[0]) ? res.data[0] : null
+          if (m && m.builtAt) this.cacheStamp = this.formatStamp(m.builtAt)
+          this.cargarDatos()
+        })
+        .catch(() => {})
+        .finally(() => { this.refrescando = false })
     },
   }
 }

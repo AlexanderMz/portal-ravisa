@@ -554,6 +554,34 @@ const Referencia = {
         }
       })
     },
+    // Lee de la cache materializada (rapido). top>0 = solo las N mas recientes (carga progresiva).
+    getReferenciasFast: ({ commit }, fecha) => {
+      return new Promise((resolve, reject) => {
+        try {
+          const top = fecha.top ? `&top=${fecha.top}` : ''
+          axiosInstance.get(`/api/referencia/fast?FechaI=${fecha.FechaIni}&FechaF=${fecha.FechaFin}${top}`)
+            .then(res => resolve(res))
+            .catch(err => reject(err.response))
+        } catch (error) {
+          console.log(error)
+          reject(error)
+        }
+      })
+    },
+    getCacheInfo: () => {
+      return new Promise((resolve, reject) => {
+        axiosInstance.get(`/api/referencia/cache-info`)
+          .then(res => resolve(res))
+          .catch(err => reject(err.response))
+      })
+    },
+    refreshCache: () => {
+      return new Promise((resolve, reject) => {
+        axiosInstance.post(`/api/referencia/refresh-cache`)
+          .then(res => resolve(res))
+          .catch(err => reject(err.response))
+      })
+    },
     getReferencia: ({ commit }, referencia) => {
       return new Promise((resolve, reject) => {
         try {
