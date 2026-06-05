@@ -298,7 +298,11 @@
           prepend-inner-icon="search" outlined dense rounded hide-details clearable
           class="search-field"
           @input="onBuscarInput"
+          @keyup.enter="aplicarBusqueda"
           @click:clear="limpiarBusqueda"></v-text-field>
+        <v-btn color="primary" depressed rounded class="ml-2" :loading="buscando" @click="aplicarBusqueda">
+          <v-icon left>search</v-icon>Buscar
+        </v-btn>
       </div>
       <v-data-table :headers="tableHeaders" dense :items="registrosTabla" :items-per-page="25" :single-expand="true"
         :expanded.sync="expanded" show-expand item-key="referencia" :loading="buscando"
@@ -622,6 +626,17 @@ export default {
         this.search2 = (this.search2Input || '').trim()
         this.$nextTick(() => { this.buscando = false })
       }, 250)
+    },
+    aplicarBusqueda() {
+      // Aplica la búsqueda de inmediato (botón Buscar o Enter), sin esperar el debounce.
+      if (this.searchTimer) clearTimeout(this.searchTimer)
+      this.buscando = true
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.search2 = (this.search2Input || '').trim()
+          this.$nextTick(() => { this.buscando = false })
+        }, 30)
+      })
     },
     limpiarBusqueda() {
       if (this.searchTimer) clearTimeout(this.searchTimer)
