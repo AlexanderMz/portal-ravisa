@@ -294,14 +294,11 @@
     <v-card class="rounded-lg" elevation="2">
       <!-- Buscador FUERA del v-data-table: teclear ya no re-renderiza las miles de filas -->
       <div class="d-flex align-center px-4 pt-3 pb-1">
-        <v-text-field v-model="search2Input" label="Buscar por referencia... (Enter)"
+        <v-text-field v-model="search2Input" label="Buscar por referencia..."
           prepend-inner-icon="search" outlined dense rounded hide-details clearable
           class="search-field"
-          @keyup.enter="aplicarBusqueda"
+          @input="onBuscarInput"
           @click:clear="limpiarBusqueda"></v-text-field>
-        <v-btn color="primary" depressed rounded class="ml-2" :loading="buscando" :disabled="buscando" @click="aplicarBusqueda">
-          <v-icon left>search</v-icon>Buscar
-        </v-btn>
       </div>
       <v-data-table :headers="tableHeaders" dense :items="registrosTabla" :items-per-page="25" :single-expand="true"
         :expanded.sync="expanded" show-expand item-key="referencia" :loading="buscando"
@@ -617,20 +614,20 @@ export default {
   },
   methods: {
     ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto', 'getReferenciasFast', 'getCacheInfo', 'refreshCache']),
-    aplicarBusqueda() {
-      // Solo busca al presionar el botón o Enter (no en cada tecla) para no trabar la tabla.
-      if (this.buscando) return
+    onBuscarInput() {
+      // Busca mientras escribe, con debounce de 250 ms para no filtrar en cada tecla.
+      if (this.searchTimer) clearTimeout(this.searchTimer)
       this.buscando = true
-      // Pequeño delay para que el spinner alcance a PINTARSE antes del filtrado/re-render (que es síncrono y bloquea el hilo).
-      setTimeout(() => {
+      this.searchTimer = setTimeout(() => {
         this.search2 = (this.search2Input || '').trim()
-        // Tras el re-render de la tabla, quitamos el spinner.
         this.$nextTick(() => { this.buscando = false })
-      }, 80)
+      }, 250)
     },
     limpiarBusqueda() {
+      if (this.searchTimer) clearTimeout(this.searchTimer)
       this.search2Input = ''
       this.search2 = ''
+      this.buscando = false
     },
     resetFiltros() {
       // Limpia solo los filtros (no toca fechas ni columnas). Instantáneo.
