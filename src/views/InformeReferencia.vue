@@ -12,7 +12,7 @@
         </div>
         <v-chip class="mr-2" small label color="primary" v-if="registros.length">
           <v-icon left x-small>list</v-icon>
-          {{ registrosFiltrados.length }} / {{ registros.length }}
+          {{ registrosTabla.length }} / {{ registros.length }}
         </v-chip>
 
         <v-spacer></v-spacer>
@@ -279,17 +279,21 @@
 
     <!-- Tabla -->
     <v-card class="rounded-lg" elevation="2">
-      <v-data-table :headers="tableHeaders" dense :items="registrosFiltrados" :items-per-page="25" :single-expand="true"
-        :expanded.sync="expanded" show-expand item-key="referencia" :search="search2"
+      <!-- Buscador FUERA del v-data-table: teclear ya no re-renderiza las miles de filas -->
+      <div class="d-flex align-center px-4 pt-3 pb-1">
+        <v-text-field v-model="search2Input" label="Buscar por referencia... (Enter)"
+          prepend-inner-icon="search" outlined dense rounded hide-details clearable
+          class="search-field"
+          @keyup.enter="aplicarBusqueda"
+          @click:clear="limpiarBusqueda"></v-text-field>
+        <v-btn color="primary" depressed rounded class="ml-2" :loading="buscando" :disabled="buscando" @click="aplicarBusqueda">
+          <v-icon left>search</v-icon>Buscar
+        </v-btn>
+      </div>
+      <v-data-table :headers="tableHeaders" dense :items="registrosTabla" :items-per-page="25" :single-expand="true"
+        :expanded.sync="expanded" show-expand item-key="referencia" :loading="buscando"
         fixed-header height="62vh" :footer-props="footerProps" class="tabla-moderna rounded-lg"
         @item-expanded="cargarDatosRefencia">
-        <template v-slot:top>
-          <div class="d-flex align-center px-4 pt-3 pb-1">
-            <v-text-field v-model="search2" label="Buscar en el informe..."
-              prepend-inner-icon="search" outlined dense rounded hide-details clearable
-              class="search-field"></v-text-field>
-          </div>
-        </template>
         <template v-slot:[`item.estatus`]="{ item }">
           <v-chip x-small label :color="estadoColor(item.estatus)" dark v-if="item.estatus">
             {{ item.estatus }}
@@ -409,6 +413,9 @@ export default {
     return {
       search: '',
       search2: '',
+      search2Input: '',
+      searchTimer: null,
+      buscando: false,
       referencia: '',
       date: new Date().toISOString().substr(0, 10),
       dateIni: '2025-01-01',
@@ -433,6 +440,8 @@ export default {
       dragValue: null,
       dragOverValue: null,
       user: localStorage.getItem('user') || 'anon',
+      colPrefsVersion: 2,
+      columnasOcultasDefault: ['dias FC/Hoy', 'dias FC/FCHL', 'fechaFacturacion', 'dias FCHL/FF', 'folioChL', 'estatusChL', 'chLComp', 'correoEFChL', 'impuesto'],
       footerProps: {
         'items-per-page-options': [25, 50, 100, 200]
       },
@@ -444,7 +453,7 @@ export default {
       ],
       dateFields: ['fecha Cruze', 'fecha Pago Pedimento', 'fechaCreacionChL', 'fechaFacturacion'],
       allColumns: [
-        {text: 'Referncia', value: 'referencia' },
+        {text: 'Referencia', value: 'referencia' },
         {text: 'Pedimento', value: 'pedimento' },
         {text: 'Fecha Cruze', value: 'fecha Cruze', align: 'center' },
         {text: 'Fecha Pago', value: 'fecha Pago Pedimento', align: 'center' },
@@ -536,6 +545,10 @@ export default {
     defaultColumnValues() {
       return this.allColumns.map(c => c.value)
     },
+    defaultVisibleColumns() {
+      // Todas las columnas EXCEPTO las ocultas por defecto
+      return this.allColumns.map(c => c.value).filter(v => !this.columnasOcultasDefault.includes(v))
+    },
     columnMap() {
       const map = {}
       this.allColumns.forEach(c => { map[c.value] = c })
@@ -574,6 +587,12 @@ export default {
       }
       return data
     },
+    registrosTabla() {
+      // Lo que ve la tabla = filtros + búsqueda por Referencia (en UN solo paso, rápido)
+      const s = (this.search2 || '').toString().toLowerCase()
+      if (!s) return this.registrosFiltrados
+      return this.registrosFiltrados.filter(r => (r.referencia || '').toString().toLowerCase().includes(s))
+    },
     exportFields() {
       const fields = {}
       this.tableHeaders.forEach(h => { fields[h.text] = h.value })
@@ -582,12 +601,28 @@ export default {
   },
   methods: {
     ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto']),
+    aplicarBusqueda() {
+      // Solo busca al presionar el botón o Enter (no en cada tecla) para no trabar la tabla.
+      if (this.buscando) return
+      this.buscando = true
+      // Pequeño delay para que el spinner alcance a PINTARSE antes del filtrado/re-render (que es síncrono y bloquea el hilo).
+      setTimeout(() => {
+        this.search2 = (this.search2Input || '').trim()
+        // Tras el re-render de la tabla, quitamos el spinner.
+        this.$nextTick(() => { this.buscando = false })
+      }, 80)
+    },
+    limpiarBusqueda() {
+      this.search2Input = ''
+      this.search2 = ''
+    },
     resetFiltros() {
       // Limpia solo los filtros (no toca fechas ni columnas). Instantáneo.
       this.estado = []
       this.soloConSaldo = false
       this.ocultarBalanceHasta = null
       this.search2 = ''
+      this.search2Input = ''
     },
     estadoColor(estatus) {
       switch ((estatus || '').toString().toLowerCase()) {
@@ -606,11 +641,10 @@ export default {
       } catch (e) {
         saved = null
       }
-      if (saved && Array.isArray(saved.order)) {
-        // Formato nuevo: { order: [...], visible: [...] }
+      if (saved && saved.v === this.colPrefsVersion && Array.isArray(saved.order)) {
+        // Preferencias del usuario (versión actual): se respetan tal cual
         const order = saved.order.filter(v => known.includes(v))
-        // inserta columnas nuevas en su posición por defecto (junto a sus vecinas),
-        // no al final, para respetar el orden previsto del catálogo
+        // inserta columnas nuevas en su posición por defecto (junto a sus vecinas)
         known.forEach((v, i) => {
           if (order.includes(v)) return
           let inserted = false
@@ -623,20 +657,17 @@ export default {
         this.columnOrder = order
         this.selectedColumns = Array.isArray(saved.visible)
           ? saved.visible.filter(v => known.includes(v))
-          : known.slice()
-      } else if (Array.isArray(saved)) {
-        // Formato anterior: solo lista de columnas visibles
-        this.columnOrder = known.slice()
-        const filtered = known.filter(v => saved.includes(v))
-        this.selectedColumns = filtered.length ? filtered : known.slice()
+          : this.defaultVisibleColumns
       } else {
+        // Sin preferencias o versión anterior -> aplica el DEFAULT nuevo (oculta las 9 columnas)
         this.columnOrder = known.slice()
-        this.selectedColumns = known.slice()
+        this.selectedColumns = this.defaultVisibleColumns
       }
     },
     saveColumnPrefs() {
       try {
         localStorage.setItem(this.storageKey, JSON.stringify({
+          v: this.colPrefsVersion,
           order: this.columnOrder,
           visible: this.selectedColumns
         }))
@@ -660,8 +691,9 @@ export default {
       this.selectedColumns = []
     },
     resetColumns() {
+      // "Restablecer" = vista por defecto (con las 9 columnas ocultas)
       this.columnOrder = this.defaultColumnValues.slice()
-      this.selectedColumns = this.defaultColumnValues.slice()
+      this.selectedColumns = this.defaultVisibleColumns
     },
     onDragStart(value) {
       this.dragValue = value
