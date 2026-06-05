@@ -300,9 +300,6 @@
           @input="onBuscarInput"
           @keyup.enter="aplicarBusqueda"
           @click:clear="limpiarBusqueda"></v-text-field>
-        <v-btn color="primary" depressed rounded class="ml-2" :loading="buscando" @click="aplicarBusqueda">
-          <v-icon left>search</v-icon>Buscar
-        </v-btn>
       </div>
       <v-data-table :headers="tableHeaders" dense :items="registrosTabla" :items-per-page="25" :single-expand="true"
         :expanded.sync="expanded" show-expand item-key="referencia" :loading="buscando"
@@ -619,13 +616,13 @@ export default {
   methods: {
     ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto', 'getReferenciasFast', 'getCacheInfo', 'refreshCache']),
     onBuscarInput() {
-      // Busca mientras escribe, con debounce de 250 ms para no filtrar en cada tecla.
+      // Busca 400 ms después de dejar de escribir (no filtra en cada tecla).
       if (this.searchTimer) clearTimeout(this.searchTimer)
       this.buscando = true
       this.searchTimer = setTimeout(() => {
         this.search2 = (this.search2Input || '').trim()
         this.$nextTick(() => { this.buscando = false })
-      }, 250)
+      }, 400)
     },
     aplicarBusqueda() {
       // Aplica la búsqueda de inmediato (botón Buscar o Enter), sin esperar el debounce.
