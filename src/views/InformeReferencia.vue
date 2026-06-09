@@ -413,13 +413,16 @@
       <p>Generando informe</p>
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>
+    <ChatSoporte />
   </v-container>
 </template>
 
 <script>
 import { mapActions } from 'vuex'
+import ChatSoporte from '@/components/ChatSoporte.vue'
 
 export default {
+  components: { ChatSoporte },
   data() {
     return {
       search: '',

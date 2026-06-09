@@ -582,6 +582,13 @@ const Referencia = {
           .catch(err => reject(err.response))
       })
     },
+    enviarMensajeChat: ({ commit }, payload) => {
+      return new Promise((resolve, reject) => {
+        axiosInstance.post(`/api/chat`, payload)
+          .then(res => resolve(res))
+          .catch(err => reject(err.response))
+      })
+    },
     getReferencia: ({ commit }, referencia) => {
       return new Promise((resolve, reject) => {
         try {
