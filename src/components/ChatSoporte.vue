@@ -49,7 +49,7 @@ export default {
     entrada: '',
     cargando: false,
     mensajes: [
-      { role: 'model', text: 'Hola 👋 Soy el asistente del Control Summary. Pregúntame sobre las columnas, por qué no aparece una referencia, los balances, etc.' }
+      { role: 'model', text: '¡Hola! 👋 Soy tu asistente especializado en el Control Summary.\n\nPuedo ayudarte a resolver dudas técnicas y a diagnosticar datos en tiempo real.\nNota: Solo puedo consultar referencias individuales y responder sobre este reporte. ¿Con qué referencia o duda empezamos hoy?' }
     ]
   }),
   methods: {
