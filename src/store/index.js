@@ -575,6 +575,13 @@ const Referencia = {
           .catch(err => reject(err.response))
       })
     },
+    getMotivosCierre: () => {
+      return new Promise((resolve, reject) => {
+        axiosInstance.get(`/api/referencia/motivos-cierre`)
+          .then(res => resolve(res))
+          .catch(err => reject(err.response))
+      })
+    },
     refreshCache: () => {
       return new Promise((resolve, reject) => {
         axiosInstance.post(`/api/referencia/refresh-cache`)
@@ -625,10 +632,17 @@ const Referencia = {
         }
       })
     },
-    updateReferencia: ({commit}, {referencia, estatus, pedimento, aduana, user}) => {
+    updateReferencia: ({commit}, data) => {
       return new Promise((resolve, reject) => {
         try {
-          axiosInstance.put(`/api/referencia/${referencia}/${estatus}/${user}/${pedimento}/${aduana}`)
+          axiosInstance.put(`/api/referencia`, {
+            referencia: data.referencia,
+            estatus: data.estatus,
+            usuarioActualizacion: data.user || data.usuarioActualizacion,
+            pedimento: data.pedimento,
+            aduana: data.aduana,
+            motivoCierreId: data.motivoCierreId || null
+          })
             .then(res => resolve(res))
             .catch(err => reject(err.response))
         } catch (error) {

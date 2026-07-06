@@ -139,14 +139,32 @@
           </template>
           <template v-slot:item.estatus="{ item }">
             <v-select
-              v-model="item.estatus"
+              :value="item.estatus"
               :items="estados"
               class="select-dense"
               dense
               outlined              
               flat
-              @change="updateReferencia({user, ...item})"
+              :disabled="item._guardando"
+              @change="cambiarEstatus(item, $event)"
             ></v-select>
+          </template>
+          <template v-slot:item.motivoCierreId="{ item }">
+            <v-select
+              v-if="item.estatus === 'Cerrado'"
+              v-model="item.motivoCierreId"
+              :items="motivosCierre"
+              item-text="descripcion"
+              item-value="id"
+              label="Motivo"
+              class="select-dense"
+              dense
+              outlined
+              flat
+              :disabled="item._guardando"
+              @change="guardarReferencia(item)"
+            ></v-select>
+            <span v-else>{{ item.motivoCierre || '' }}</span>
           </template>
           <template v-slot:[`item.balanceGeneral`]="{ item }">
             <span :class="{ 'red--text': item.balanceGeneral < 0 }"> {{ item.balanceGeneral | currency }} </span>
@@ -187,6 +205,7 @@ export default {
       modal: false,
       modal1: false,
       selectedFile: null,
+      motivosCierre: [],
       topColumns: [
         {text: 'Referncia', value: 'referencia' }, 
         {text: 'Pedimento', value: 'pedimento' }, 
@@ -214,7 +233,8 @@ export default {
         // {text: 'Estado CHL', value: 'estatusChL' }, 
         // {text: 'CHL Compo', value: 'chLComp' }, 
         // {text: 'Correo EF CHL', value: 'correoEFChL' }, 
-        {text: 'Estado', value: 'estatus'}
+        {text: 'Estado', value: 'estatus'},
+        {text: 'Motivo de cierre', value: 'motivoCierreId', width: 260}
       ],
       estados: [
         {text: 'Abierto', value: 'Abierto'},
@@ -224,8 +244,42 @@ export default {
       user: localStorage.getItem("user")
     }),
   mixins: [mixin],
+  mounted() {
+    this.cargarMotivosCierre()
+  },
   methods: {
-    ...mapActions("referencia", ['getReferencias', 'updateReferencia', 'updateReferencias']),
+    ...mapActions("referencia", ['getReferencias', 'updateReferencia', 'updateReferencias', 'getMotivosCierre']),
+    cargarMotivosCierre() {
+      this.getMotivosCierre().then(res => {
+        this.motivosCierre = (res.data || []).map(m => ({
+          id: Number(m.id !== undefined ? m.id : m.Id),
+          descripcion: m.descripcion || m.Descripcion
+        }))
+      }).catch(() => {
+        alert('No fue posible cargar el catálogo de motivos de cierre.')
+      })
+    },
+    cambiarEstatus(item, estatus) {
+      const anterior = item.estatus
+      item.estatus = estatus
+      if (estatus === 'Cerrado' && !item.motivoCierreId) return
+      this.guardarReferencia(item, anterior)
+    },
+    guardarReferencia(item, estatusAnterior) {
+      if (item.estatus === 'Cerrado' && !item.motivoCierreId) return
+      item._guardando = true
+      return this.updateReferencia({ user: this.user, ...item })
+        .then(() => {
+          const motivo = this.motivosCierre.find(m => m.id === Number(item.motivoCierreId))
+          if (motivo) item.motivoCierre = motivo.descripcion
+        })
+        .catch(err => {
+          if (estatusAnterior) item.estatus = estatusAnterior
+          const mensaje = err && err.data ? err.data : 'No fue posible guardar la referencia.'
+          alert(mensaje)
+        })
+        .finally(() => { item._guardando = false })
+    },
     setDateIni () {
       this.$refs.dialog.save(this.dateIni)
       this.registros = []
@@ -246,7 +300,7 @@ export default {
       this.$refs.dialog1.save(this.dateFin)
       this.getReferencias({ FechaFin: this.dateFin.replaceAll("-", ""), FechaIni: this.dateIni.replaceAll("-", "") })
         .then((res) => {
-          this.registros = res.data
+          this.registros = (res.data || []).map(r => ({ ...r, _guardando: false }))
           this.overlay = false
         })
         .catch(() => this.overlay = false)
@@ -279,11 +333,21 @@ export default {
           this.setTable(headers, ws);
           const usuarioActualizacion = this.user;
           const postData = this.rows.map(item => {
+            const textoMotivo = item.motivoCierre || item['Motivo de cierre']
+            const motivo = this.motivosCierre.find(m =>
+              (m.descripcion || '').toLowerCase() === (textoMotivo || '').toString().trim().toLowerCase())
             return {
               usuarioActualizacion,
-              ...item
+              ...item,
+              motivoCierreId: item.motivoCierreId || (motivo ? motivo.id : null)
             }
           })
+          const sinMotivo = postData.find(item =>
+            (item.estatus || '').toString().toLowerCase() === 'cerrado' && !item.motivoCierreId)
+          if (sinMotivo) {
+            this.loading = false
+            return alert(`Falta un motivo de cierre válido para la referencia ${sinMotivo.referencia}.`)
+          }
           
           this.updateReferencias(postData)
               .then((res) => {

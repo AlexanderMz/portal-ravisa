@@ -237,6 +237,22 @@
           </v-col>
         </v-row>
         <v-row dense class="mt-1" align="center">
+          <v-col cols="12" sm="6" md="4">
+            <v-select
+              v-model="motivoCierre"
+              :items="motivosCierre"
+              item-text="descripcion"
+              item-value="descripcion"
+              label="Motivo de cierre (todos si vacío)"
+              prepend-inner-icon="filter_list"
+              outlined
+              dense
+              hide-details
+              multiple
+              clearable
+              small-chips
+            ></v-select>
+          </v-col>
           <v-col cols="12" sm="4" md="3" class="d-flex align-center">
             <v-switch
               v-model="soloConSaldo"
@@ -438,6 +454,8 @@ export default {
       dateIni: '2025-01-01',
       dateFin: new Date().toISOString().substr(0, 10),
       estado: [],
+      motivoCierre: [],
+      motivosCierre: [],
       soloConSaldo: false,
       ocultarBalanceHasta: null,
       page: 1,
@@ -457,7 +475,7 @@ export default {
       dragValue: null,
       dragOverValue: null,
       user: localStorage.getItem('user') || 'anon',
-      colPrefsVersion: 2,
+      colPrefsVersion: 3,
       columnasOcultasDefault: ['dias FC/Hoy', 'dias FC/FCHL', 'fechaFacturacion', 'dias FCHL/FF', 'folioChL', 'estatusChL', 'chLComp', 'correoEFChL', 'impuesto'],
       footerProps: {
         'items-per-page-options': [25, 50, 100, 200]
@@ -503,6 +521,7 @@ export default {
         {text: 'CHL Compo', value: 'chLComp' },
         {text: 'Correo EF CHL', value: 'correoEFChL' },
         {text: 'Estado', value: 'estatus', align: 'center' },
+        {text: 'Motivo de cierre', value: 'motivoCierre' },
       ],
       responseColumns: [
         {text:'Tipo Documento', value: 'tipoDocumento'},
@@ -546,6 +565,7 @@ export default {
   },
   created() {
     this.loadColumnPrefs()
+    this.cargarMotivosCierre()
   },
   watch: {
     selectedColumns() {
@@ -591,6 +611,10 @@ export default {
         const set = this.estado.map(e => e.toString().toLowerCase())
         data = data.filter(r => set.includes((r.estatus || '').toString().toLowerCase()))
       }
+      if (this.motivoCierre && this.motivoCierre.length) {
+        const motivos = this.motivoCierre.map(m => m.toString().toLowerCase())
+        data = data.filter(r => motivos.includes((r.motivoCierre || '').toString().toLowerCase()))
+      }
       if (this.soloConSaldo) {
         data = data.filter(r => Number(r.saldo) > 0)
       }
@@ -617,7 +641,15 @@ export default {
     }
   },
   methods: {
-    ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto', 'getReferenciasFast', 'getCacheInfo', 'refreshCache']),
+    ...mapActions("referencia", ['getReferencias', 'getReferencia', 'getReferenciaObjeto', 'getReferenciasFast', 'getCacheInfo', 'refreshCache', 'getMotivosCierre']),
+    cargarMotivosCierre() {
+      this.getMotivosCierre().then(res => {
+        this.motivosCierre = (res.data || []).map(m => ({
+          id: Number(m.id !== undefined ? m.id : m.Id),
+          descripcion: m.descripcion || m.Descripcion
+        }))
+      }).catch(() => { this.motivosCierre = [] })
+    },
     onBuscarInput() {
       // Busca 400 ms después de dejar de escribir (no filtra en cada tecla).
       if (this.searchTimer) clearTimeout(this.searchTimer)
@@ -647,6 +679,7 @@ export default {
     resetFiltros() {
       // Limpia solo los filtros (no toca fechas ni columnas). Instantáneo.
       this.estado = []
+      this.motivoCierre = []
       this.soloConSaldo = false
       this.ocultarBalanceHasta = null
       this.search2 = ''
@@ -669,7 +702,7 @@ export default {
       } catch (e) {
         saved = null
       }
-      if (saved && saved.v === this.colPrefsVersion && Array.isArray(saved.order)) {
+      if (saved && [2, this.colPrefsVersion].includes(saved.v) && Array.isArray(saved.order)) {
         // Preferencias del usuario (versión actual): se respetan tal cual
         const order = saved.order.filter(v => known.includes(v))
         // inserta columnas nuevas en su posición por defecto (junto a sus vecinas)
@@ -686,6 +719,10 @@ export default {
         this.selectedColumns = Array.isArray(saved.visible)
           ? saved.visible.filter(v => known.includes(v))
           : this.defaultVisibleColumns
+        // La v3 incorpora Motivo de cierre como columna visible para usuarios existentes.
+        if (saved.v === 2 && !this.selectedColumns.includes('motivoCierre')) {
+          this.selectedColumns.push('motivoCierre')
+        }
       } else {
         // Sin preferencias o versión anterior -> aplica el DEFAULT nuevo (oculta las 9 columnas)
         this.columnOrder = known.slice()
