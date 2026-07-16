@@ -253,23 +253,7 @@
               small-chips
             ></v-select>
           </v-col>
-          <v-col cols="12" sm="4" md="3" class="d-flex align-center">
-            <v-switch
-              v-model="soloConSaldo"
-              label="Solo con saldo"
-              inset
-              dense
-              hide-details
-              class="mt-0 pt-0"
-            ></v-switch>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon small class="ml-2 grey--text" v-bind="attrs" v-on="on">help_outline</v-icon>
-              </template>
-              <span>Muestra solo referencias con saldo de anticipos &gt; 0 (omite las que están en 0)</span>
-            </v-tooltip>
-          </v-col>
-          <v-col cols="12" sm="5" md="5" class="d-flex align-center">
+          <v-col cols="12" sm="6" md="5" class="d-flex align-center">
             <v-text-field
               v-model.number="ocultarBalanceHasta"
               type="number"
@@ -290,7 +274,25 @@
               <span>Oculta referencias con Balance GC entre −(este monto) y 0. Vacío = no oculta nada. No muestra por debajo del piso del servidor (−10).</span>
             </v-tooltip>
           </v-col>
-          <v-col cols="12" sm="3" md="4" class="d-flex justify-end">
+        </v-row>
+        <v-row dense class="mt-1" align="center" justify="space-between">
+          <v-col cols="auto" class="d-flex align-center">
+            <v-switch
+              v-model="soloConSaldo"
+              label="Solo con saldo"
+              inset
+              dense
+              hide-details
+              class="mt-0 pt-0"
+            ></v-switch>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon small class="ml-2 grey--text" v-bind="attrs" v-on="on">help_outline</v-icon>
+              </template>
+              <span>Muestra solo referencias con saldo de anticipos &gt; 0 (omite las que están en 0)</span>
+            </v-tooltip>
+          </v-col>
+          <v-col cols="auto" class="d-flex justify-end">
             <v-btn
               color="primary"
               rounded

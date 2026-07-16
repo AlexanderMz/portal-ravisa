@@ -353,7 +353,10 @@ export default {
               .then((res) => {
                 this.loading = false
                 alert("Archivo procesado con exito")
-                this.registros = this.rows
+                this.registros = postData.map(item => {
+                  const m = this.motivosCierre.find(mm => mm.id === Number(item.motivoCierreId))
+                  return { ...item, _guardando: false, motivoCierre: m ? m.descripcion : (item.motivoCierre || item['Motivo de cierre'] || '') }
+                })
               })
               .catch(() => this.loading = false)
               .finally(() => this.loading = false)
